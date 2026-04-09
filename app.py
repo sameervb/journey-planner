@@ -7,7 +7,9 @@ from __future__ import annotations
 
 import json
 import time
+import base64
 from datetime import date, datetime
+from pathlib import Path
 
 import requests
 import streamlit as st
@@ -23,6 +25,28 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded",
 )
+
+# ── Asset loader ───────────────────────────────────────────────────────────────
+def _b64(filename: str) -> str:
+    p = Path(__file__).parent / "assets" / filename
+    if p.exists():
+        ext = p.suffix.lstrip(".")
+        mime = {"jpg": "jpeg", "jpeg": "jpeg", "png": "png", "webp": "webp", "avif": "avif"}.get(ext, "jpeg")
+        return f"data:image/{mime};base64," + base64.b64encode(p.read_bytes()).decode()
+    return ""
+
+@st.cache_data(show_spinner=False)
+def load_assets():
+    return {
+        "overview": _b64("overview.jpg"),
+        "network":  _b64("network.jpg"),
+        "hero":     _b64("hero.jpg"),
+    }
+
+IMG         = load_assets()
+overview_bg = f'url("{IMG["overview"]}")' if IMG["overview"] else "none"
+network_bg  = f'url("{IMG["network"]}")'  if IMG["network"]  else "none"
+hero_bg     = f'url("{IMG["hero"]}")'     if IMG["hero"]     else "none"
 
 # ══════════════════════════════════════════════════════════════════════════════
 # CSS
@@ -198,6 +222,17 @@ st.markdown("""
 .empty-icon { font-size: 2.5rem; margin-bottom: 12px; }
 .empty-title { font-size: 1rem; font-weight: 700; color: #e2e8f0; margin-bottom: 6px; }
 .empty-sub { color: #4b5a7a; font-size: 0.84rem; max-width: 380px; line-height: 1.6; }
+
+/* ── Tab banner ── */
+.tab-banner {
+    border-radius: 20px; overflow: hidden; position: relative;
+    margin-bottom: 28px; height: 180px;
+    background-size: cover; background-position: center;
+    display: flex; align-items: flex-end;
+    background-color: #0c1628; border: 1px solid #1a2e4a;
+}
+.tab-banner .banner-overlay { position: absolute; inset: 0; }
+.tab-banner .banner-content { position: relative; z-index: 1; padding: 28px 32px; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -354,19 +389,17 @@ def sec(title: str, icon: str = ""):
         unsafe_allow_html=True,
     )
 
-def banner(title: str, subtitle: str, accent: str = "#0ea5e9", tag: str = "Journey Planner"):
+def banner(title: str, subtitle: str, accent: str = "#0ea5e9", tag: str = "Journey Planner", bg: str = "none"):
+    img_style = f"background-image:{bg};" if bg != "none" else ""
     st.markdown(f"""
-    <div style="background:linear-gradient(135deg,#0c1628 0%,#0f1e38 100%);
-                border:1px solid #1a2e4a;border-radius:20px;
-                padding:24px 32px;margin-bottom:28px;
-                border-left:4px solid {accent};position:relative;overflow:hidden">
-        <div style="position:absolute;top:0;right:0;width:50%;height:100%;
-                    background:radial-gradient(ellipse at 80% 50%,rgba(14,165,233,0.06),transparent)"></div>
-        <div style="position:relative">
+    <div class="tab-banner" style="{img_style}">
+        <div class="banner-overlay"
+             style="background:linear-gradient(to right,rgba(7,9,15,0.94) 0%,rgba(7,9,15,0.65) 55%,rgba(7,9,15,0.2) 100%)"></div>
+        <div class="banner-content">
             <div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;
                         letter-spacing:0.18em;color:{accent};margin-bottom:8px">{tag}</div>
             <div style="font-size:1.75rem;font-weight:800;color:#f1f5f9;line-height:1.1">{title}</div>
-            <div style="color:#64748b;margin-top:6px;font-size:0.84rem">{subtitle}</div>
+            <div style="color:#94a3b8;margin-top:6px;font-size:0.84rem;max-width:520px">{subtitle}</div>
         </div>
     </div>""", unsafe_allow_html=True)
 
@@ -393,13 +426,26 @@ def footer():
 # Sidebar
 # ══════════════════════════════════════════════════════════════════════════════
 with st.sidebar:
-    st.markdown("""
-    <div style="margin-bottom:20px">
-        <div style="font-size:0.65rem;font-weight:700;text-transform:uppercase;
-                    letter-spacing:0.2em;color:#0ea5e9;margin-bottom:6px">AI-Powered</div>
-        <div style="font-size:1.3rem;font-weight:800;color:#f1f5f9;line-height:1">Journey Planner</div>
-        <div style="color:#4b5a7a;font-size:0.78rem;margin-top:4px">No login · No data stored</div>
-    </div>""", unsafe_allow_html=True)
+    if IMG["overview"]:
+        st.markdown(f"""
+        <div style="border-radius:16px;overflow:hidden;margin-bottom:16px;height:110px;
+                    background-image:{overview_bg};background-size:cover;background-position:center">
+            <div style="height:100%;background:linear-gradient(to bottom,rgba(7,9,15,0.3),rgba(7,9,15,0.88));
+                        display:flex;flex-direction:column;justify-content:flex-end;padding:14px">
+                <div style="font-size:0.6rem;font-weight:700;text-transform:uppercase;
+                            letter-spacing:0.2em;color:#0ea5e9">AI-Powered</div>
+                <div style="font-size:1.1rem;font-weight:800;color:#f1f5f9;line-height:1.2">Journey Planner</div>
+                <div style="color:#4b5a7a;font-size:0.72rem;margin-top:2px">No login · No data stored</div>
+            </div>
+        </div>""", unsafe_allow_html=True)
+    else:
+        st.markdown("""
+        <div style="margin-bottom:20px">
+            <div style="font-size:0.65rem;font-weight:700;text-transform:uppercase;
+                        letter-spacing:0.2em;color:#0ea5e9;margin-bottom:6px">AI-Powered</div>
+            <div style="font-size:1.3rem;font-weight:800;color:#f1f5f9;line-height:1">Journey Planner</div>
+            <div style="color:#4b5a7a;font-size:0.78rem;margin-top:4px">No login · No data stored</div>
+        </div>""", unsafe_allow_html=True)
 
     st.markdown('<div style="height:1px;background:linear-gradient(90deg,#1e2d42,transparent);margin-bottom:16px"></div>', unsafe_allow_html=True)
 
@@ -496,6 +542,7 @@ with tab_route:
         "Compare car, train, bus, and flight for any journey — cost, time, and CO₂.",
         accent="#0ea5e9",
         tag="Transport Comparison",
+        bg=overview_bg,
     )
 
     with st.form("route_form"):
@@ -652,6 +699,7 @@ with tab_multi:
         "Enter any number of waypoints — we'll find the shortest, most efficient route order.",
         accent="#8b5cf6",
         tag="Route Optimization",
+        bg=network_bg,
     )
 
     with st.form("multistop_form"):
@@ -805,6 +853,7 @@ with tab_advisor:
         "Ask anything about your journey — transport, accommodation, local tips, timing.",
         accent="#22c55e",
         tag="Travel Intelligence",
+        bg=network_bg,
     )
 
     if not AI_ON:
@@ -919,6 +968,7 @@ with tab_pack:
         "Describe your trip — get a fully categorised, AI-generated packing checklist.",
         accent="#f59e0b",
         tag="Packing Intelligence",
+        bg=hero_bg,
     )
 
     # Input form
@@ -1116,12 +1166,12 @@ Be specific to this trip. Adjust quantities for {pk_days} days. Include items un
 # TAB 5 — About
 # ══════════════════════════════════════════════════════════════════════════════
 with tab_about:
-    st.markdown("""
+    st.markdown(f"""
     <div style="border-radius:24px;overflow:hidden;position:relative;height:280px;
-                background:linear-gradient(135deg,#0c1628 0%,#0f1e38 60%,#07090f 100%);
+                background-image:{overview_bg};background-size:cover;background-position:center;
                 border:1px solid #1a2e4a;margin-bottom:32px">
         <div style="position:absolute;inset:0;
-                    background:radial-gradient(ellipse at 70% 50%,rgba(14,165,233,0.15) 0%,transparent 70%)"></div>
+                    background:linear-gradient(135deg,rgba(7,9,15,0.92) 0%,rgba(7,9,15,0.6) 100%)"></div>
         <div style="position:relative;z-index:1;padding:48px;height:100%;
                     display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center">
             <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;
