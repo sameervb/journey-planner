@@ -44,9 +44,9 @@ def load_assets():
     }
 
 IMG         = load_assets()
-overview_bg = f'url("{IMG["overview"]}")' if IMG["overview"] else "none"
-network_bg  = f'url("{IMG["network"]}")'  if IMG["network"]  else "none"
-hero_bg     = f'url("{IMG["hero"]}")'     if IMG["hero"]     else "none"
+overview_bg = f"url('{IMG['overview']}')" if IMG["overview"] else "none"
+network_bg  = f"url('{IMG['network']}')"  if IMG["network"]  else "none"
+hero_bg     = f"url('{IMG['hero']}')"     if IMG["hero"]     else "none"
 
 # ══════════════════════════════════════════════════════════════════════════════
 # CSS
