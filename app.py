@@ -13,6 +13,7 @@ from pathlib import Path
 
 import requests
 import streamlit as st
+import streamlit.components.v1 as components
 
 from services.maps import (
     geocode, get_driving_data, estimate_modes, optimize_route,
@@ -48,6 +49,48 @@ overview_bg = f"url('{IMG['overview']}')" if IMG["overview"] else "none"
 network_bg  = f"url('{IMG['network']}')"  if IMG["network"]  else "none"
 hero_bg     = f"url('{IMG['hero']}')"     if IMG["hero"]     else "none"
 
+def inject_tab_bg_switcher(tab_imgs: list):
+    """Inject JS that swaps full-screen app background per active tab.
+    tab_imgs: list of raw data-URI strings (one per tab, in order).
+    Uses a stacked gradient overlay to keep text readable.
+    """
+    imgs_js = json.dumps(tab_imgs)
+    components.html(f"""
+    <script>
+    (function() {{
+      var IMGS = {imgs_js};
+      var OVERLAY = 'linear-gradient(rgba(7,9,15,0.72), rgba(7,9,15,0.72))';
+      function applyBg(idx) {{
+        var app = window.parent.document.querySelector('[data-testid="stAppViewContainer"]');
+        if (!app) return;
+        var img = IMGS[idx] || '';
+        if (img) {{
+          app.style.backgroundImage = OVERLAY + ", url('" + img + "')";
+          app.style.backgroundSize = 'cover';
+          app.style.backgroundPosition = 'center top';
+          app.style.backgroundAttachment = 'fixed';
+          app.style.backgroundRepeat = 'no-repeat';
+        }}
+      }}
+      function setupObserver() {{
+        var tabList = window.parent.document.querySelector('[data-baseweb="tab-list"]');
+        if (!tabList) {{ setTimeout(setupObserver, 250); return; }}
+        function syncActive() {{
+          var tabs = tabList.querySelectorAll('[data-baseweb="tab"]');
+          for (var i = 0; i < tabs.length; i++) {{
+            if (tabs[i].getAttribute('aria-selected') === 'true') {{ applyBg(i); break; }}
+          }}
+        }}
+        syncActive();
+        new MutationObserver(syncActive).observe(tabList, {{
+          attributes: true, subtree: true, attributeFilter: ['aria-selected']
+        }});
+      }}
+      setupObserver();
+    }})();
+    </script>
+    """, height=0, scrolling=False)
+
 # ══════════════════════════════════════════════════════════════════════════════
 # CSS
 # ══════════════════════════════════════════════════════════════════════════════
@@ -56,7 +99,13 @@ st.markdown("""
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 *, *::before, *::after { font-family: 'Inter', sans-serif; box-sizing: border-box; }
 
-[data-testid="stAppViewContainer"] { background: #07090f; }
+[data-testid="stAppViewContainer"] {
+    background: #07090f;
+    background-size: cover !important;
+    background-position: center top !important;
+    background-attachment: fixed !important;
+    background-repeat: no-repeat !important;
+}
 [data-testid="stSidebar"] {
     background: linear-gradient(180deg, #090d1a 0%, #07090f 100%);
     border-right: 1px solid #1a2236;
@@ -546,6 +595,11 @@ with st.sidebar:
 # ══════════════════════════════════════════════════════════════════════════════
 tab_route, tab_multi, tab_advisor, tab_pack, tab_about = st.tabs([
     "🗺️ Route Planner", "🔀 Multi-Stop", "🤖 AI Advisor", "🎒 Packing List", "ℹ️ About"
+])
+
+# Tab 0→overview, 1→network, 2→network, 3→hero, 4→overview
+inject_tab_bg_switcher([
+    IMG["overview"], IMG["network"], IMG["network"], IMG["hero"], IMG["overview"]
 ])
 
 
