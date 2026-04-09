@@ -505,6 +505,20 @@ with st.sidebar:
     else:
         st.markdown('<div style="background:#0d1520;border:1px solid #1e2d42;border-radius:10px;padding:8px 12px;color:#4b5a7a;font-size:0.78rem;margin-bottom:8px">🔵 &nbsp;Haversine mode (no Maps key)</div>', unsafe_allow_html=True)
 
+    _MODEL_DESC = {
+        "phi3:mini":     "⚡ fastest · ~5s",
+        "phi3:medium":   "⚡ fast · ~10s",
+        "mistral":       "⚖️ balanced · ~15s",
+        "mistral:7b":    "⚖️ balanced · ~15s",
+        "llama3.1:8b":   "🧠 capable · ~30s",
+        "llama3.1:70b":  "🧠 most capable · slow",
+        "llama3:8b":     "🧠 capable · ~30s",
+        "gemma:7b":      "⚖️ balanced · ~20s",
+        "gemma2:9b":     "⚖️ balanced · ~20s",
+        "qwen2.5:7b":    "⚖️ balanced · ~20s",
+        "deepseek-r1":   "🔬 reasoning · slow",
+    }
+
     if AI_ON:
         models = detect_models()
         gpu    = detect_gpu()
@@ -513,9 +527,11 @@ with st.sidebar:
         if models:
             current = _ollama_model()
             idx = models.index(current) if current in models else 0
-            chosen = st.selectbox("Model", models, index=idx,
-                                  label_visibility="collapsed",
-                                  help="Faster: phi3:mini > mistral > llama3.1")
+            chosen = st.selectbox(
+                "Model", models, index=idx,
+                label_visibility="collapsed",
+                format_func=lambda m: f"{m} — {_MODEL_DESC[m]}" if m in _MODEL_DESC else m,
+            )
             if chosen != st.session_state.get("journey_model"):
                 st.session_state["journey_model"] = chosen
     else:
@@ -617,30 +633,25 @@ with tab_route:
             cost_total = m["cost_eur"] * result["travelers"]
 
             badges = ""
-            if is_cheap: badges += f'<span class="mode-badge" style="background:rgba(34,197,94,0.15);color:#4ade80">Cheapest</span> '
-            if is_green: badges += f'<span class="mode-badge" style="background:rgba(34,197,94,0.1);color:#86efac">Greenest</span> '
-            if is_fast:  badges += f'<span class="mode-badge" style="background:rgba(139,92,246,0.15);color:#c4b5fd">Fastest</span> '
+            if is_cheap: badges += '<span class="mode-badge" style="background:rgba(34,197,94,0.15);color:#4ade80">Cheapest</span> '
+            if is_green: badges += '<span class="mode-badge" style="background:rgba(34,197,94,0.1);color:#86efac">Greenest</span> '
+            if is_fast:  badges += '<span class="mode-badge" style="background:rgba(139,92,246,0.15);color:#c4b5fd">Fastest</span> '
+            travelers_row = f'<div class="mode-metric"><span class="mode-metric-key">Total ({result["travelers"]}p)</span><span class="mode-metric-val">€{round(cost_total)}</span></div>' if result["travelers"] > 1 else ""
 
+            # Build as single-line HTML — multiline indented HTML triggers Markdown code-block mode
+            card = (
+                f'<div class="mode-card {rec_class}">'
+                f'<div class="accent-top" style="background:{m["color"]}"></div>'
+                f'<div class="mode-label">{m["label"]}</div>'
+                f'<div class="mode-metric"><span class="mode-metric-key">Duration</span><span class="mode-metric-val">{format_duration(m["time_h"])}</span></div>'
+                f'<div class="mode-metric"><span class="mode-metric-key">Cost / person</span><span class="mode-metric-val">€{m["cost_eur"]:.0f}</span></div>'
+                f'{travelers_row}'
+                f'<div class="mode-metric"><span class="mode-metric-key">CO₂</span><span class="mode-metric-val">{m["co2_kg"]:.1f} kg</span></div>'
+                f'<div>{badges}</div>'
+                f'</div>'
+            )
             with col:
-                st.markdown(f"""
-                <div class="mode-card {rec_class}">
-                    <div class="accent-top" style="background:{m['color']}"></div>
-                    <div class="mode-label">{m['label']}</div>
-                    <div class="mode-metric">
-                        <span class="mode-metric-key">Duration</span>
-                        <span class="mode-metric-val">{format_duration(m['time_h'])}</span>
-                    </div>
-                    <div class="mode-metric">
-                        <span class="mode-metric-key">Cost / person</span>
-                        <span class="mode-metric-val">€{m['cost_eur']:.0f}</span>
-                    </div>
-                    {'<div class="mode-metric"><span class="mode-metric-key">Total (' + str(result["travelers"]) + 'p)</span><span class="mode-metric-val">€' + str(round(cost_total)) + '</span></div>' if result["travelers"] > 1 else ''}
-                    <div class="mode-metric">
-                        <span class="mode-metric-key">CO₂</span>
-                        <span class="mode-metric-val">{m['co2_kg']:.1f} kg</span>
-                    </div>
-                    <div>{badges}</div>
-                </div>""", unsafe_allow_html=True)
+                st.markdown(card, unsafe_allow_html=True)
 
         # AI analysis
         if AI_ON:
@@ -655,7 +666,7 @@ with tab_route:
                     f"- {m['label']}: {format_duration(m['time_h'])}, €{m['cost_eur']:.0f}/person, {m['co2_kg']:.1f} kg CO₂"
                     for m in modes.values()
                 )
-                if st.button("🤖 Analyse This Route", type="primary", use_container_width=True, key="analyse_route"):
+                if st.button("🤖 Analyze This Route", type="primary", use_container_width=True, key="analyze_route"):
                     prompt = f"""Journey: {result['origin']} → {result['destination']}
 Distance: {result['distance_km']} km straight-line, {result['road_km']} km road
 Travellers: {result['travelers']}
@@ -714,7 +725,7 @@ with tab_multi:
             height=120,
             key="ms_wps",
         )
-        ms_submit = st.form_submit_button("Optimise Route →", use_container_width=True, type="primary")
+        ms_submit = st.form_submit_button("Optimize Route →", use_container_width=True, type="primary")
 
     if ms_submit:
         # Parse waypoints
@@ -729,7 +740,7 @@ with tab_multi:
         elif not waypoints:
             st.warning("Please enter at least one waypoint.")
         else:
-            with st.spinner(f"Optimising route through {len(waypoints)} stop(s)..."):
+            with st.spinner(f"Optimizing route through {len(waypoints)} stop(s)..."):
                 opt = optimize_route(ms_origin, waypoints, ms_dest, MAPS_KEY)
                 opt["origin"]      = ms_origin
                 opt["destination"] = ms_dest
@@ -816,7 +827,7 @@ with tab_multi:
                     st.session_state.pop("multistop_analysis", None)
                     st.rerun()
             else:
-                if st.button("🤖 Analyse Multi-Stop Route", type="primary", use_container_width=True, key="analyse_ms"):
+                if st.button("🤖 Analyze Multi-Stop Route", type="primary", use_container_width=True, key="analyze_ms"):
                     seg_lines = "\n".join(
                         f"- {s['from']} → {s['to']}: {s['distance_km']} km, {format_duration(s['duration_h'])}"
                         for s in ms["segments"]
@@ -1042,16 +1053,14 @@ Be specific to this trip. Adjust quantities for {pk_days} days. Include items un
 
             system = f"You are a meticulous travel packer with expert knowledge of {pk_dest} and {pk_type.lower()} travel. Generate practical, specific packing lists."
 
-            with st.spinner("Generating your personalised packing list..."):
-                start = time.perf_counter()
-                full = ""
-                placeholder = st.empty()
-                for token in _stream(prompt, system=system, max_tokens=1200, temp=0.65):
-                    full += token
-                    placeholder.markdown(f'<div class="ai-output">{full}▌</div>', unsafe_allow_html=True)
-                placeholder.empty()
+            start = time.perf_counter()
+            status = st.status("⚡ Generating packing list...", expanded=True)
+            with status:
+                full = st.write_stream(_stream(prompt, system=system, max_tokens=900, temp=0.65))
                 elapsed = time.perf_counter() - start
-                st.caption(f"Generated in {elapsed:.1f}s")
+                st.caption(f"Generated in {elapsed:.1f}s · Model: {_ollama_model()}")
+            status.update(label=f"✅ Done · {elapsed:.1f}s", state="complete", expanded=False)
+            full = full or ""
 
             if full and not full.startswith("⚠️"):
                 # Parse into categories
