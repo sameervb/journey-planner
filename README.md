@@ -10,7 +10,7 @@
 [![Ollama](https://img.shields.io/badge/LLM-Ollama-black?style=flat)](https://ollama.ai)
 [![License](https://img.shields.io/badge/license-MIT-22c55e?style=flat)](LICENSE)
 
-[**Soul Spark**](https://soulspark.me) · [**LinkedIn**](https://linkedin.com/in/sameervb) · [**GitHub**](https://github.com/sameervb)
+[**Portfolio**](https://sameerbhalerao.com) · [**Soul Spark**](https://soulspark.me) · [**LinkedIn**](https://linkedin.com/in/sameervb) · [**GitHub**](https://github.com/sameervb)
 
 </div>
 
@@ -155,6 +155,6 @@ Built as a standalone portfolio app, part of a series extracted from [Soul Spark
 
 <div align="center">
 
-Built by [Sameer Bhalerao](https://linkedin.com/in/sameervb) · Senior Analytics & AI Product Leader · Amazon L6 BIE · Luxembourg
+Built by [Sameer Bhalerao](https://sameerbhalerao.com) · Senior Analytics & AI Product Leader · Amazon L6 BIE · Luxembourg
 
 </div>
