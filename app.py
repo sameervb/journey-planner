@@ -309,6 +309,18 @@ def _ollama_model() -> str:
     except Exception:
         return "llama3.1:8b"
 
+def _ollama_headers() -> dict:
+    try:
+        key = st.secrets.get("OLLAMA_API_KEY", "") or st.secrets.get("ollama", {}).get("api_key", "")
+    except Exception:
+        key = ""
+    return {"Authorization": f"Bearer {key}"} if key else {}
+
+def _ollama_offline_message(status=None) -> str:
+    if status == 429:
+        return "⚠️ **AI is busy** — please try again in a moment."
+    return "⚠️ **AI is offline right now.** The AI features of this demo run on a local model that is not always on. Everything else still works."
+
 MAPS_KEY  = _maps_key()
 AI_ON     = bool(_ollama_url())
 
@@ -320,7 +332,7 @@ def detect_models() -> list[str]:
     url = _ollama_url()
     if not url: return []
     try:
-        r = requests.get(f"{url.rstrip('/')}/api/tags", timeout=5)
+        r = requests.get(f"{url.rstrip('/')}/api/tags", headers=_ollama_headers(), timeout=5)
         if r.ok:
             return sorted(m["name"] for m in r.json().get("models", []))
     except Exception:
@@ -332,7 +344,7 @@ def detect_gpu() -> bool | None:
     url = _ollama_url()
     if not url: return None
     try:
-        r = requests.get(f"{url.rstrip('/')}/api/ps", timeout=5)
+        r = requests.get(f"{url.rstrip('/')}/api/ps", headers=_ollama_headers(), timeout=5)
         if r.ok:
             models = r.json().get("models", [])
             if not models: return None
@@ -353,7 +365,7 @@ def _stream(prompt: str, system: str = "", max_tokens: int = 1000, temp: float =
             f"{url.rstrip('/')}/api/chat",
             json={"model": _ollama_model(), "messages": msgs, "stream": True,
                   "options": {"num_predict": max_tokens, "temperature": temp}},
-            timeout=120, stream=True,
+            headers=_ollama_headers(), timeout=120, stream=True,
         )
         if r.ok:
             for line in r.iter_lines():
@@ -366,11 +378,11 @@ def _stream(prompt: str, system: str = "", max_tokens: int = 1000, temp: float =
                     except Exception:
                         pass
         else:
-            yield f"⚠️ Ollama HTTP {r.status_code}"
+            yield _ollama_offline_message(r.status_code)
     except requests.Timeout:
-        yield "⚠️ **Timeout** — try phi3:mini or mistral for faster responses."
+        yield "⚠️ **Timeout** — the model is still working. Try again, or pick a faster model."
     except requests.ConnectionError:
-        yield "⚠️ **Cannot reach Ollama.** Check OLLAMA_BASE_URL in secrets."
+        yield _ollama_offline_message()
     except Exception as e:
         yield f"⚠️ {e}"
 
@@ -384,7 +396,7 @@ def _stream_multi_turn(messages: list[dict], max_tokens: int = 700, temp: float 
             f"{url.rstrip('/')}/api/chat",
             json={"model": _ollama_model(), "messages": messages, "stream": True,
                   "options": {"num_predict": max_tokens, "temperature": temp}},
-            timeout=120, stream=True,
+            headers=_ollama_headers(), timeout=120, stream=True,
         )
         if r.ok:
             for line in r.iter_lines():
@@ -397,11 +409,11 @@ def _stream_multi_turn(messages: list[dict], max_tokens: int = 700, temp: float 
                     except Exception:
                         pass
         else:
-            yield f"⚠️ Ollama HTTP {r.status_code}"
+            yield _ollama_offline_message(r.status_code)
     except requests.Timeout:
-        yield "⚠️ Timeout — try phi3:mini for faster responses."
+        yield "⚠️ **Timeout** — the model is still working. Try again, or pick a faster model."
     except requests.ConnectionError:
-        yield "⚠️ Cannot reach Ollama. Check tunnel URL."
+        yield _ollama_offline_message()
     except Exception as e:
         yield f"⚠️ {e}"
 
@@ -589,8 +601,8 @@ with st.sidebar:
         models = detect_models()
         gpu    = detect_gpu()
         gpu_lbl = "🟩 GPU" if gpu is True else "🟨 CPU" if gpu is False else ""
-        st.markdown(f'<div style="background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.2);border-radius:10px;padding:8px 12px;color:#86efac;font-size:0.78rem;margin-bottom:8px">🟢 &nbsp;AI online &nbsp;{gpu_lbl}</div>', unsafe_allow_html=True)
         if models:
+            st.markdown(f'<div style="background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.2);border-radius:10px;padding:8px 12px;color:#86efac;font-size:0.78rem;margin-bottom:8px">🟢 &nbsp;AI online &nbsp;{gpu_lbl}</div>', unsafe_allow_html=True)
             current = _ollama_model()
             idx = models.index(current) if current in models else 0
             chosen = st.selectbox(
@@ -600,6 +612,8 @@ with st.sidebar:
             )
             if chosen != st.session_state.get("journey_model"):
                 st.session_state["journey_model"] = chosen
+        else:
+            st.markdown('<div style="background:#12141a;border:1px solid #1e2d42;border-radius:10px;padding:8px 12px;color:#8a97b3;font-size:0.78rem">⚪ &nbsp;AI offline · runs on a local model</div>', unsafe_allow_html=True)
     else:
         st.markdown('<div style="background:#0d1520;border:1px solid #1e2d42;border-radius:10px;padding:8px 12px;color:#4b5a7a;font-size:0.78rem">🔵 &nbsp;Set OLLAMA_BASE_URL for AI</div>', unsafe_allow_html=True)
 

@@ -104,19 +104,18 @@ OLLAMA_MODEL    = "llama3.1:8b"
 3. Under **Advanced settings → Secrets**, paste:
 
 ```toml
-OLLAMA_BASE_URL    = "https://your-cloudflare-url.trycloudflare.com"
+OLLAMA_BASE_URL    = "https://your-gateway-host.example.com"
+OLLAMA_API_KEY     = "token for the gateway"
 OLLAMA_MODEL       = "llama3.1:8b"
 GOOGLE_MAPS_API_KEY = ""   # optional
 ```
 
-### Cloudflare Tunnel — expose local Ollama to the cloud
+### Exposing local Ollama to the cloud
 
-```bash
-# Run on your machine while Ollama is running on port 11434
-cloudflared tunnel --url http://localhost:11434
-```
-
-Paste the generated `*.trycloudflare.com` URL as `OLLAMA_BASE_URL` in Streamlit Cloud secrets.
+Ollama has no authentication, so do not publish its port directly. Put an authenticated gateway in front of it
+(bearer token, model allow-list, rate limits) and publish only the gateway, for example through a Cloudflare tunnel.
+Set `OLLAMA_BASE_URL` to the gateway's URL and `OLLAMA_API_KEY` to its token in Streamlit Cloud secrets. The app
+sends the key as `Authorization: Bearer <key>` and shows "AI offline" when the gateway cannot be reached.
 
 ---
 
